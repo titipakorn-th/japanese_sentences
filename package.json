@@ -1,0 +1,47 @@
+{
+	"name": "sentences",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"prepare": "svelte-kit sync || echo ''",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "node --loader ts-node/esm scripts/migrate.ts",
+		"db:init": "node --loader ts-node/esm scripts/init-db.ts",
+		"db:seed": "node --loader ts-node/esm scripts/seed-data.ts",
+		"db:setup": "node --loader ts-node/esm scripts/setup-db.ts",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage"
+	},
+	"devDependencies": {
+		"@sveltejs/adapter-auto": "^4.0.0",
+		"@sveltejs/kit": "^2.16.0",
+		"@sveltejs/vite-plugin-svelte": "^5.0.0",
+		"@testing-library/jest-dom": "^6.6.3",
+		"@testing-library/svelte": "^5.2.7",
+		"@types/better-sqlite3": "^7.6.9",
+		"@types/kuromoji": "^0.1.3",
+		"c8": "^10.1.3",
+		"drizzle-kit": "^0.30.6",
+		"jsdom": "^26.0.0",
+		"svelte": "^5.0.0",
+		"svelte-check": "^4.0.0",
+		"ts-node": "^10.9.2",
+		"typescript": "^5.0.0",
+		"vite": "^6.2.5",
+		"vitest": "^3.1.1"
+	},
+	"dependencies": {
+		"better-sqlite3": "^11.9.1",
+		"drizzle-orm": "^0.41.0",
+		"kuromoji": "^0.1.2",
+		"sqlite": "^5.1.1",
+		"sqlite3": "^5.1.7"
+	}
+}
