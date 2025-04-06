@@ -2,12 +2,13 @@
   import { parseFuriganaData } from '$lib/db/queries/sentences';
   import type { Sentence } from '$lib/db/types';
   import { invalidate } from '$app/navigation';
+  import { goto } from '$app/navigation';
   import Furigana from '$lib/components/Furigana.svelte';
   
   const { data } = $props<{ data: any }>();
   
   const sentences = $derived(data.sentences as Sentence[]);
-  const { page, limit } = $derived(data.pagination);
+  const { page, limit, activeTag } = $derived(data.pagination);
   
   // Function to display a formatted date
   function formatDate(dateStr: Date | string | number) {
@@ -48,23 +49,48 @@
   async function refreshList() {
     await invalidate('sentences:list');
   }
+  
+  // Function to filter by tag
+  async function filterByTag(tag: string) {
+    goto(`/sentences?tag=${encodeURIComponent(tag.trim())}`);
+  }
+  
+  // Function to clear tag filter
+  async function clearTagFilter() {
+    goto('/sentences');
+  }
 </script>
 
 <div class="sentences-container">
   <header class="page-header">
     <h1>Japanese Sentences</h1>
     <div class="header-actions">
-      <button class="btn-secondary" on:click={refreshList}>
+      <button class="btn-secondary" onclick={refreshList}>
         Refresh List
       </button>
       <a href="/sentences/new" class="btn-primary">Add New Sentence</a>
     </div>
   </header>
   
+  {#if activeTag}
+    <div class="active-filter">
+      <span>Filtering by tag: <strong>{activeTag}</strong></span>
+      <button class="btn-clear" onclick={clearTagFilter}>Clear Filter</button>
+    </div>
+  {/if}
+  
   {#if sentences.length === 0}
     <div class="empty-state">
-      <p>No sentences found. Start building your collection by adding new sentences.</p>
-      <a href="/sentences/new" class="btn-primary">Add Your First Sentence</a>
+      <p>
+        {#if activeTag}
+          No sentences found with tag "{activeTag}". Try a different tag or clear the filter.
+        {:else}
+          No sentences found. Start building your collection by adding new sentences.
+        {/if}
+      </p>
+      {#if !activeTag}
+        <a href="/sentences/new" class="btn-primary">Add Your First Sentence</a>
+      {/if}
     </div>
   {:else}
     <div class="sentence-list">
@@ -93,7 +119,12 @@
             {#if sentence.tags}
               <div class="tags">
                 {#each sentence.tags.split(',') as tag}
-                  <span class="tag">{tag.trim()}</span>
+                  <button 
+                    class="tag {activeTag === tag.trim() ? 'active' : ''}" 
+                    onclick={() => filterByTag(tag)}
+                  >
+                    {tag.trim()}
+                  </button>
                 {/each}
               </div>
             {/if}
@@ -113,13 +144,13 @@
     
     <div class="pagination">
       {#if page > 1}
-        <a href="/sentences?page={page - 1}" class="pagination-link">Previous</a>
+        <a href="/sentences?page={page - 1}{activeTag ? `&tag=${encodeURIComponent(activeTag)}` : ''}" class="pagination-link">Previous</a>
       {/if}
       
       <span class="current-page">Page {page}</span>
       
       {#if sentences.length === limit}
-        <a href="/sentences?page={page + 1}" class="pagination-link">Next</a>
+        <a href="/sentences?page={page + 1}{activeTag ? `&tag=${encodeURIComponent(activeTag)}` : ''}" class="pagination-link">Next</a>
       {/if}
     </div>
   {/if}
@@ -146,6 +177,31 @@
   h1 {
     color: #4a6fa5;
     margin: 0;
+  }
+  
+  .active-filter {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background-color: #edf2f7;
+    border-radius: 6px;
+    margin-bottom: 1.5rem;
+  }
+  
+  .btn-clear {
+    background-color: #e9ecef;
+    color: #495057;
+    padding: 0.3rem 0.7rem;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.2s;
+  }
+  
+  .btn-clear:hover {
+    background-color: #ced4da;
   }
   
   .btn-primary {
@@ -298,6 +354,18 @@
     padding: 0.2rem 0.5rem;
     border-radius: 4px;
     font-size: 0.8rem;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+  }
+  
+  .tag:hover {
+    background-color: #dee2e6;
+  }
+  
+  .tag.active {
+    background-color: #4a6fa5;
+    color: white;
   }
   
   .date-added {

@@ -8,9 +8,10 @@ export const load: PageServerLoad = async ({ url, depends }) => {
   const page = parseInt(url.searchParams.get('page') || '1');
   const limit = 20;
   const offset = (page - 1) * limit;
+  const tag = url.searchParams.get('tag') || '';
   
-  console.log('Loading sentences page', { page, limit, offset });
-  const sentences = await getAllSentences(limit, offset);
+  console.log('Loading sentences page', { page, limit, offset, tag });
+  const sentences = await getAllSentences(limit, offset, tag);
   console.log(`Retrieved ${sentences.length} sentences`);
   
   return {
@@ -18,6 +19,7 @@ export const load: PageServerLoad = async ({ url, depends }) => {
     pagination: {
       page,
       limit,
+      activeTag: tag
     }
   };
 }; 

@@ -2,101 +2,152 @@
   FuriganaEditor.svelte - Component for editing and correcting furigana readings
 -->
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
-  import type { FuriganaItem } from '$lib/db/types';
   import { updateFuriganaViaApi } from '$lib/services/api-service';
-  import { updateSentenceFurigana } from '$lib/services/api-service';
+  import type { FuriganaItem } from '$lib/db/types';
   
-  const { text, furiganaData = [] } = $props<{
-    text: string;
+  // Component props
+  const { 
+    text, 
+    furiganaData = [],
+    updateCallback = undefined
+  } = $props<{ 
+    text: string; 
     furiganaData?: FuriganaItem[];
+    updateCallback?: (updatedFurigana: FuriganaItem[]) => void;  
   }>();
   
-  const dispatch = createEventDispatcher();
-  
-  // State for currently edited item
-  let editingIndex = $state<number | null>(null);
+  // Component state
+  let editingIndex = $state(-1);
   let currentReading = $state('');
   let isSaving = $state(false);
   let errorMessage = $state('');
+  let successMessage = $state('');
   
-  // Check if a character is a kanji
-  function isKanji(char: string): boolean {
-    const code = char.charCodeAt(0);
-    // CJK Unified Ideographs range for common kanji
-    return (code >= 0x4E00 && code <= 0x9FFF);
-  }
+  // Computed values
+  const displayItems = $derived(furiganaData.map(item => {
+    // Get the actual text for this item from the original sentence
+    const actualText = text.slice(item.start, item.end);
+    return {
+      ...item,
+      displayText: actualText
+    };
+  }));
   
   // Start editing a furigana item
   function startEditing(index: number) {
     editingIndex = index;
-    currentReading = furiganaData[index]?.reading || '';
+    const item = furiganaData[index];
+    if (item) {
+      currentReading = item.reading || '';
+    }
+    // Clear any messages
+    errorMessage = '';
+    successMessage = '';
   }
   
   // Cancel editing
   function cancelEditing() {
-    editingIndex = null;
+    editingIndex = -1;
     currentReading = '';
     errorMessage = '';
   }
   
+  // Handle key events for accessibility
   function handleKeyDown(event: KeyboardEvent, index: number) {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      startEditing(index);
+    if (event.key === 'Enter') {
+      if (editingIndex === index) {
+        // If already editing, save on Enter
+        saveFurigana();
+      } else {
+        // Otherwise start editing
+        startEditing(index);
+      }
+    } else if (event.key === 'Escape' && editingIndex === index) {
+      cancelEditing();
     }
   }
   
-  // Save the edited furigana
-  async function saveFurigana(index: number, sentenceId?: number) {
-    if (isSaving) return;
+  // Save the updated furigana reading
+  async function saveFurigana() {
+    if (editingIndex < 0 || editingIndex >= furiganaData.length || isSaving) {
+      return;
+    }
     
-    errorMessage = '';
+    const item = furiganaData[editingIndex];
+    const targetText = text.slice(item.start, item.end);
+    const originalReading = item.reading || '';
+    
+    // Don't save if nothing changed
+    if (currentReading === originalReading) {
+      cancelEditing();
+      return;
+    }
+    
     isSaving = true;
+    errorMessage = '';
     
     try {
-      // Update the furigana data
-      const updatedFuriganaData = [...furiganaData];
-      updatedFuriganaData[index] = {
-        ...updatedFuriganaData[index],
-        reading: currentReading
-      };
+      console.log('Updating furigana:', {
+        text: targetText,
+        originalReading,
+        newReading: currentReading
+      });
       
-      let success = false;
-      
-      // If we have a sentenceId, use the updateSentenceFurigana function
-      if (sentenceId) {
-        success = await updateSentenceFurigana(sentenceId, updatedFuriganaData);
-      } else {
-        // Otherwise, use the individual update API
-        const targetWord = furiganaData[index].text;
-        const originalReading = furiganaData[index].reading;
-        success = await updateFuriganaViaApi(targetWord, originalReading, currentReading);
-      }
+      // Call API to update furigana
+      const success = await updateFuriganaViaApi(
+        targetText,
+        originalReading,
+        currentReading
+      );
       
       if (success) {
-        // Update the local state
-        dispatch('update', { updatedFurigana: updatedFuriganaData });
-        editingIndex = null;
+        // Create new array with updated furigana
+        const updatedFurigana = [...furiganaData];
+        updatedFurigana[editingIndex] = {
+          ...item,
+          reading: currentReading
+        };
+        
+        // Show success message
+        successMessage = `Updated reading for "${targetText}" to "${currentReading}"`;
+        
+        // Call the callback to update parent component
+        if (updateCallback) {
+          updateCallback(updatedFurigana);
+        }
+        
+        // Reset editing state after a brief delay
+        setTimeout(() => {
+          editingIndex = -1;
+          currentReading = '';
+        }, 1000);
       } else {
-        errorMessage = 'Failed to update furigana';
+        errorMessage = 'Failed to update furigana. Please try again.';
       }
     } catch (error) {
-      console.error('Error updating furigana:', error);
-      errorMessage = error instanceof Error ? error.message : 'An error occurred';
+      console.error('Error saving furigana:', error);
+      errorMessage = error instanceof Error 
+        ? error.message 
+        : 'An unknown error occurred while saving.';
     } finally {
       isSaving = false;
     }
   }
   
-  // Get display text for each furigana item
-  function getDisplayText(item: FuriganaItem): string {
-    return text.slice(item.start, item.end);
-  }
-  
-  // Check if an item contains kanji (and thus needs furigana)
-  function hasKanji(str: string): boolean {
-    return Array.from(str).some(isKanji);
+  // Get context for a word in the sentence
+  function getContextText(item: FuriganaItem): string {
+    // Show some text around the word for context
+    const contextStart = Math.max(0, item.start - 5);
+    const contextEnd = Math.min(text.length, item.end + 5);
+    
+    let result = '';
+    if (contextStart > 0) result += '...';
+    result += text.slice(contextStart, item.start);
+    result += `<strong>${text.slice(item.start, item.end)}</strong>`;
+    result += text.slice(item.end, contextEnd);
+    if (contextEnd < text.length) result += '...';
+    
+    return result;
   }
 </script>
 
@@ -104,38 +155,76 @@
   <h3>Edit Furigana Readings</h3>
   
   {#if errorMessage}
-    <div class="error">{errorMessage}</div>
+    <div class="error-message" role="alert">
+      <span class="message-icon">⚠️</span>
+      <span>{errorMessage}</span>
+    </div>
+  {/if}
+  
+  {#if successMessage}
+    <div class="success-message" role="status">
+      <span class="message-icon">✓</span>
+      <span>{successMessage}</span>
+    </div>
   {/if}
   
   <div class="furigana-list">
-    {#each furiganaData as item, index}
-      <div class="furigana-item" class:has-reading={item.reading} class:editing={editingIndex === index}>
-        <button 
-          class="kanji-button" 
-          onclick={() => startEditing(index)}
-          onkeydown={(e) => handleKeyDown(e, index)}
-          aria-label="Edit reading for {item.text}"
-        >
-          <span class="kanji-text">{item.text}</span>
-          <span class="reading">{item.reading}</span>
-        </button>
+    {#each displayItems as item, index}
+      {@const displayText = item.displayText}
+      {@const reading = item.reading || ''}
+      
+      <div 
+        class="furigana-item {editingIndex === index ? 'editing' : ''}"
+        tabindex="0"
+        onclick={() => startEditing(index)}
+        onkeydown={(e) => handleKeyDown(e, index)}
+        role="button"
+        aria-label="Edit reading for {displayText}"
+      >
+        <div class="item-info">
+          <div class="item-header">
+            <span class="kanji">{displayText}</span>
+            <span class="reading">{reading}</span>
+          </div>
+          
+          <div class="item-context">
+            <small>{@html getContextText(item)}</small>
+          </div>
+        </div>
         
         {#if editingIndex === index}
           <div class="edit-form">
+            <label for="reading-input-{index}">
+              Edit reading for "{displayText}"
+            </label>
+            
             <input 
+              id="reading-input-{index}"
               type="text" 
               bind:value={currentReading} 
-              placeholder="Enter reading"
+              placeholder="Enter hiragana reading"
+              autofocus
+              onkeydown={(e) => e.key === 'Enter' && saveFurigana()}
             />
+            
             <div class="edit-actions">
               <button 
-                class="btn-save" 
-                onclick={() => saveFurigana(index, parseInt(window.location.pathname.split('/')[2]))}
-                disabled={isSaving}
+                onclick={() => saveFurigana()} 
+                disabled={isSaving || !currentReading.trim()}
+                class="btn-save"
+                type="button"
               >
                 {isSaving ? 'Saving...' : 'Save'}
               </button>
-              <button class="btn-cancel" onclick={cancelEditing}>Cancel</button>
+              
+              <button 
+                onclick={cancelEditing}
+                disabled={isSaving} 
+                class="btn-cancel"
+                type="button"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         {/if}
@@ -143,150 +232,207 @@
     {/each}
   </div>
   
-  {#if furiganaData.length === 0}
-    <div class="empty-state">
-      No furigana data available. Generate furigana first.
-    </div>
+  {#if displayItems.length === 0}
+    <p class="no-data">No furigana data available for this sentence.</p>
   {/if}
+  
+  <div class="help-text">
+    <p>Click on any word to edit its reading. Changes will be saved to the database.</p>
+  </div>
 </div>
 
 <style>
   .furigana-editor {
-    margin-top: 1rem;
+    margin: 1rem 0;
     padding: 1rem;
-    background-color: #f9f9f9;
-    border-radius: 8px;
+    background-color: #f8f9fa;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
   
   h3 {
     margin-top: 0;
     margin-bottom: 1rem;
     font-size: 1.2rem;
-    color: #4a6fa5;
   }
   
   .furigana-list {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 1rem;
     margin-bottom: 1rem;
   }
   
   .furigana-item {
-    position: relative;
-    padding: 0.5rem;
-    border-radius: 4px;
+    padding: 0.75rem;
     background-color: white;
-    border: 1px solid #e9ecef;
+    border: 1px solid #e0e0e0;
+    border-radius: 0.25rem;
+    cursor: pointer;
     transition: all 0.2s;
   }
   
   .furigana-item:hover {
-    border-color: #4a6fa5;
+    background-color: #f0f4f8;
+    border-color: #c0c0c0;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
   }
   
   .furigana-item.editing {
-    border-color: #4a6fa5;
-    box-shadow: 0 0 0 2px rgba(74, 111, 165, 0.2);
-  }
-  
-  .furigana-item.has-reading {
     background-color: #f0f7ff;
+    border-color: #90c3ff;
+    box-shadow: 0 0 0 2px rgba(144, 195, 255, 0.4);
   }
   
-  .kanji-button {
+  .item-info {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    width: 100%;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0.5rem 1rem;
-    text-align: center;
+    gap: 0.5rem;
   }
   
-  .kanji-text {
-    font-size: 1.5rem;
-    line-height: 1.5;
+  .item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .kanji {
+    font-weight: bold;
+    font-size: 1.3rem;
   }
   
   .reading {
-    font-size: 0.9rem;
-    color: #6c757d;
-    margin-top: 0.2rem;
+    color: #666;
+    font-size: 1rem;
+  }
+  
+  .item-context {
+    font-size: 0.85rem;
+    color: #666;
+    line-height: 1.4;
+    border-top: 1px dashed #e0e0e0;
+    padding-top: 0.5rem;
+    margin-top: 0.25rem;
+  }
+  
+  .item-context strong {
+    background-color: #fff8e1;
+    padding: 0 2px;
+    border-radius: 2px;
   }
   
   .edit-form {
-    margin-top: 0.5rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid #e9ecef;
+    margin-top: 0.75rem;
+    border-top: 1px solid #e0e0e0;
+    padding-top: 0.75rem;
+  }
+  
+  label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: #555;
   }
   
   input {
     width: 100%;
     padding: 0.5rem;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    font-size: 0.9rem;
     margin-bottom: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 0.25rem;
+    font-size: 1rem;
   }
   
   input:focus {
-    border-color: #4a6fa5;
-    box-shadow: 0 0 0 2px rgba(74, 111, 165, 0.2);
     outline: none;
+    border-color: #4a6fa5;
+    box-shadow: 0 0 0 3px rgba(74, 111, 165, 0.1);
   }
   
   .edit-actions {
     display: flex;
+    justify-content: space-between;
     gap: 0.5rem;
   }
   
-  .btn-save, .btn-cancel {
-    padding: 0.4rem 0.8rem;
-    border-radius: 4px;
+  button {
+    padding: 0.5rem 1rem;
     border: none;
-    font-size: 0.9rem;
+    border-radius: 0.25rem;
     cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+    flex: 1;
   }
   
   .btn-save {
-    background-color: #4a6fa5;
+    background-color: #4caf50;
     color: white;
   }
   
   .btn-save:hover:not(:disabled) {
-    background-color: #3a5985;
+    background-color: #388e3c;
+    transform: translateY(-1px);
   }
   
   .btn-save:disabled {
-    background-color: #adb5bd;
+    background-color: #9e9e9e;
     cursor: not-allowed;
   }
   
   .btn-cancel {
-    background-color: #e9ecef;
-    color: #495057;
+    background-color: #f44336;
+    color: white;
   }
   
-  .btn-cancel:hover {
-    background-color: #ced4da;
+  .btn-cancel:hover:not(:disabled) {
+    background-color: #d32f2f;
+    transform: translateY(-1px);
   }
   
-  .error {
-    background-color: #fff5f5;
-    border-left: 3px solid #e03131;
-    padding: 0.75rem 1rem;
+  .btn-cancel:disabled {
+    background-color: #9e9e9e;
+    cursor: not-allowed;
+  }
+  
+  .message-icon {
+    margin-right: 0.5rem;
+  }
+  
+  .error-message {
     margin-bottom: 1rem;
-    color: #e03131;
-    border-radius: 0 4px 4px 0;
+    padding: 0.75rem;
+    background-color: #ffebee;
+    border-left: 4px solid #f44336;
+    color: #b71c1c;
+    display: flex;
+    align-items: center;
+    border-radius: 0 0.25rem 0.25rem 0;
   }
   
-  .empty-state {
-    padding: 1rem;
+  .success-message {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background-color: #e8f5e9;
+    border-left: 4px solid #4caf50;
+    color: #2e7d32;
+    display: flex;
+    align-items: center;
+    border-radius: 0 0.25rem 0.25rem 0;
+  }
+  
+  .no-data {
+    color: #757575;
     text-align: center;
-    color: #6c757d;
     font-style: italic;
+    margin: 2rem 0;
+  }
+  
+  .help-text {
+    color: #757575;
+    font-size: 0.875rem;
+    border-top: 1px solid #e0e0e0;
+    padding-top: 0.75rem;
   }
 </style> 

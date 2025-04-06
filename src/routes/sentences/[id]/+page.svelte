@@ -7,6 +7,7 @@
   import { enhance } from '$app/forms';
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
+  import { updateSentenceFurigana } from '$lib/services/api-service';
   
   const { data, form } = $props<{ data: any; form: any }>();
   
@@ -29,7 +30,7 @@
   
   const sentenceData = $derived(data.sentenceWithWords as SentenceWithWords);
   let sentence = $state<Sentence | null>(null);
-  const words = $derived(sentenceData.words);
+  const words = $derived(sentenceData?.words || []);
   let furiganaItems = $state<FuriganaItem[]>([]);
   
   // Update sentence and furiganaItems when sentenceData changes
@@ -64,15 +65,44 @@
   }
   
   // Function to handle furigana updates
-  function handleFuriganaUpdate(event: CustomEvent<{ updatedFurigana: FuriganaItem[] }>) {
-    if (event.detail?.updatedFurigana && sentence) {
-      furiganaItems = event.detail.updatedFurigana;
-      
-      // Update the sentence object as well to reflect the changes
-      sentence = {
-        ...sentence,
-        furiganaData: JSON.stringify(furiganaItems)
-      };
+  async function handleFuriganaUpdate(updatedFurigana: FuriganaItem[]) {
+    console.log('Updating furigana with new data:', updatedFurigana);
+    
+    // Update local state immediately for responsive UI
+    furiganaItems = updatedFurigana;
+    
+    // Update the sentence object
+    if (!sentence) {
+      console.error('Cannot update furigana: sentence is null');
+      return;
+    }
+    
+    // Use a separate variable with type assertion
+    const currentSentence = sentence as Sentence;
+    const sentenceId = currentSentence.sentenceId;
+    
+    // Create a new sentence object with updated furigana
+    const updatedSentence = {
+      ...currentSentence,
+      furiganaData: JSON.stringify(updatedFurigana)
+    };
+    
+    // Update the local sentence state
+    sentence = updatedSentence;
+    
+    // Update in the database
+    try {
+      const success = await updateSentenceFurigana(sentenceId, updatedFurigana);
+      if (!success) {
+        console.error('Failed to update sentence furigana in the database');
+      } else {
+        console.log('Successfully updated furigana in database');
+        
+        // Force Svelte to re-render the Furigana component by creating a new array
+        furiganaItems = [...updatedFurigana];
+      }
+    } catch (error) {
+      console.error('Error updating sentence furigana:', error);
     }
   }
   
@@ -204,6 +234,11 @@
       isGeneratingFurigana = false;
     }
   }
+  
+  // Add this function after toggleFuriganaEditor
+  function filterByTag(tag: string) {
+    goto(`/sentences?tag=${encodeURIComponent(tag.trim())}`);
+  }
 </script>
 
 {#if sentence}
@@ -262,7 +297,9 @@
   
   <div class="sentence-content">
     <div class="japanese-text">
-      <Furigana text={sentence.sentence} furiganaData={furiganaItems} />
+      {#if sentence !== null}
+        <Furigana text={sentence.sentence} furiganaData={furiganaItems} />
+      {/if}
     </div>
     
     {#if sentence.translation}
@@ -272,12 +309,14 @@
       </div>
     {/if}
     
-    {#if sentence.tags}
+    {#if sentence?.tags}
       <div class="tags-section">
         <h2>Tags</h2>
         <div class="tags">
           {#each sentence.tags.split(',') as tag}
-            <span class="tag">{tag.trim()}</span>
+            <button class="tag" onclick={() => filterByTag(tag)}>
+              {tag.trim()}
+            </button>
           {/each}
         </div>
       </div>
@@ -310,11 +349,11 @@
         </button>
       </div>
       
-      {#if showFuriganaEditor}
+      {#if showFuriganaEditor && sentence}
         <FuriganaEditor 
           text={sentence.sentence} 
           furiganaData={furiganaItems}
-          on:update={handleFuriganaUpdate}
+          updateCallback={handleFuriganaUpdate}
         />
       {/if}
     </div>
@@ -324,10 +363,13 @@
     <button 
       onclick={generateFurigana} 
       class="btn-primary" 
-      disabled={isGeneratingFurigana}
+      disabled={isGeneratingFurigana || (sentence && sentence.llmProcessed)}
+      title={sentence && sentence.llmProcessed ? "Furigana already generated for this sentence" : "Generate furigana readings for this sentence"}
     >
       {#if isGeneratingFurigana}
         Generating Furigana...
+      {:else if sentence && sentence.llmProcessed}
+        Furigana Already Generated
       {:else}
         Generate Furigana
       {/if}
@@ -339,6 +381,10 @@
       Error: {generationError}
     </div>
   {/if}
+</div>
+{:else}
+<div class="loading-container">
+  <p>Loading sentence details...</p>
 </div>
 {/if}
 
@@ -581,6 +627,13 @@
     padding: 0.3rem 0.6rem;
     border-radius: 4px;
     font-size: 0.9rem;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  .tag:hover {
+    background-color: #dee2e6;
   }
   
   .vocabulary-section, .furigana-section {

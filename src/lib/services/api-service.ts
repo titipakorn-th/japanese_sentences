@@ -51,35 +51,49 @@ export async function generateFuriganaViaApi(
 }
 
 /**
- * Update furigana reading via API
+ * Updates furigana reading via API
+ * @param text The text that needs furigana (the kanji word)
+ * @param originalReading Original reading
+ * @param correctedReading New reading
+ * @returns Promise<boolean> True if successful
  */
 export async function updateFuriganaViaApi(
   text: string,
-  reading: string,
+  originalReading: string,
   correctedReading: string
 ): Promise<boolean> {
   try {
+    // Log update attempt for debugging
+    console.log('Attempting to update furigana:', {
+      text,
+      originalReading,
+      correctedReading
+    });
+    
+    // Call the correct API endpoint
     const response = await fetch('/api/furigana/update', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         text,
-        reading,
-        correctedReading,
-      } as UpdateFuriganaRequest),
+        reading: originalReading,
+        correctedReading
+      })
     });
-
+    
     if (!response.ok) {
-      throw new Error('Failed to update furigana');
+      const errorData = await response.json();
+      console.error('API error updating furigana:', errorData);
+      throw new Error(errorData.error || `API error: ${response.status}`);
     }
-
-    const data = await response.json() as UpdateFuriganaResponse;
-    return data.success;
+    
+    const result = await response.json();
+    return result.success === true;
   } catch (error) {
-    console.error('Error updating furigana:', error);
-    return false;
+    console.error('Failed to update furigana:', error);
+    throw error;
   }
 }
 

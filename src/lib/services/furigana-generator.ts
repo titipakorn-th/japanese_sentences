@@ -2,6 +2,7 @@ import { getFuriganaFromCache, getFuriganaFromVocabulary } from '$lib/db/queries
 import { getFuriganaFromMorphology, segmentText } from './morphological-analyzer';
 import { generateFuriganaWithLLM, type FuriganaResult } from './llm-service';
 import type { FuriganaItem } from '$lib/db/types';
+import { storeFuriganaInCache } from '$lib/db/queries/furigana';
 
 // Define source confidence levels
 const CONFIDENCE = {
@@ -271,21 +272,29 @@ function getUnprocessedText(
  */
 export async function applyFuriganaCorrection(
   text: string,
-  reading: string,
+  originalReading: string,
   correctedReading: string
 ): Promise<FuriganaWithMetadata> {
-  // Import the function dynamically to avoid circular dependency
-  const { storeFuriganaInCache } = await import('$lib/db/queries/furigana');
+  console.log('Applying furigana correction:', {
+    text,
+    originalReading,
+    correctedReading
+  });
   
-  // Store in cache with maximum confidence
-  const cacheResult = await storeFuriganaInCache(text, correctedReading, 100, 'user');
+  // Store the correction in cache with high confidence (user correction)
+  const result = await storeFuriganaInCache(
+    text,
+    correctedReading,
+    95, // High confidence for user corrections
+    'user'
+  );
   
   return {
     text,
     reading: correctedReading,
-    confidence: 100,
+    confidence: 95,
     source: 'user',
-    start: 0,
+    start: 0, // We don't track position in corrections
     end: text.length
   };
 } 

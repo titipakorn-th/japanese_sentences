@@ -17,8 +17,8 @@ if (!browser) {
 /**
  * Get all sentences with optional limit and offset
  */
-export async function getAllSentences(limit = 50, offset = 0): Promise<Sentence[]> {
-  console.log('DB: Getting all sentences with limit:', limit, 'offset:', offset);
+export async function getAllSentences(limit = 50, offset = 0, tag = ''): Promise<Sentence[]> {
+  console.log('DB: Getting all sentences with limit:', limit, 'offset:', offset, tag ? `tag: ${tag}` : '');
   
   try {
     // First try using the ORM
@@ -33,6 +33,15 @@ export async function getAllSentences(limit = 50, offset = 0): Promise<Sentence[
     // Log the ids to help debug
     if (results.length > 0) {
       console.log('DB: Sentence IDs retrieved:', results.map((s: Sentence) => s.sentenceId));
+      
+      // If tag is provided, filter the results
+      if (tag) {
+        const filteredResults = results.filter((s: Sentence) => 
+          s.tags && s.tags.split(',').some(t => t.trim() === tag));
+        console.log(`DB: Filtered to ${filteredResults.length} sentences with tag: ${tag}`);
+        return filteredResults;
+      }
+      
       return results;
     } else {
       console.log('DB: No sentences found via ORM, trying direct SQLite connection');
@@ -56,8 +65,8 @@ export async function getAllSentences(limit = 50, offset = 0): Promise<Sentence[
             return [];
           }
           
-          // Get sentences directly
-          const stmt = sqlite.prepare(`
+          // Prepare the SQL query - if tag is provided, include a WHERE clause
+          let sql = `
             SELECT 
               sentence_id as sentenceId,
               sentence,
@@ -69,11 +78,22 @@ export async function getAllSentences(limit = 50, offset = 0): Promise<Sentence[
               created_at as createdAt,
               llm_processed as llmProcessed
             FROM sentences
-            ORDER BY created_at DESC
-            LIMIT ? OFFSET ?
-          `);
+          `;
           
-          const rows = stmt.all(limit, offset);
+          const params = [];
+          
+          if (tag) {
+            sql += ` WHERE tags LIKE ?`;
+            // Using LIKE with wildcards to match tags in comma-separated list
+            params.push(`%${tag}%`);
+          }
+          
+          sql += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+          params.push(limit, offset);
+          
+          // Execute the query
+          const stmt = sqlite.prepare(sql);
+          const rows = stmt.all(...params);
           
           // Close the connection only if we created a new one
           if (sqlite !== globalDb && sqlite.close) {
@@ -85,8 +105,16 @@ export async function getAllSentences(limit = 50, offset = 0): Promise<Sentence[
           if (rows.length > 0) {
             console.log('DB: Direct connection IDs:', rows.map((r: any) => r.sentenceId));
             
+            // Apply a more precise tag filter on the results if needed
+            let finalRows = rows;
+            if (tag) {
+              finalRows = rows.filter((row: any) => 
+                row.tags && row.tags.split(',').some((t: string) => t.trim() === tag));
+              console.log(`DB: Refined to ${finalRows.length} sentences with exact tag match: ${tag}`);
+            }
+            
             // Convert dates to proper Date objects
-            return rows.map((row: any) => ({
+            return finalRows.map((row: any) => ({
               ...row,
               createdAt: new Date(row.createdAt)
             }));

@@ -40,12 +40,14 @@ export const POST: RequestHandler = async ({ params, request }) => {
       return json({ success: false, error: 'Sentence not found' }, { status: 404 });
     }
     
-    // Update the sentence with the new furigana data - remove updated_at which doesn't exist
-    await sql`
-      UPDATE sentences
-      SET furigana_data = ${furiganaDataString}
-      WHERE sentence_id = ${sentenceId}
-    `;
+    // Use updateSentence function which properly handles the database update
+    const updated = await updateSentence(sentenceId, {
+      furiganaData: furiganaDataString
+    });
+    
+    if (!updated) {
+      return json({ success: false, error: 'Failed to update sentence' }, { status: 500 });
+    }
     
     return json({ success: true });
   } catch (error) {
