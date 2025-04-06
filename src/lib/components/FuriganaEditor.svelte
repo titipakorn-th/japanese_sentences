@@ -435,4 +435,38 @@
     border-top: 1px solid #e0e0e0;
     padding-top: 0.75rem;
   }
+  
+  @media (max-width: 768px) {
+    .furigana-list {
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .furigana-list {
+      grid-template-columns: 1fr;
+    }
+    
+    .furigana-editor {
+      padding: 0.75rem;
+    }
+    
+    .item-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.25rem;
+    }
+    
+    .kanji {
+      font-size: 1.1rem;
+    }
+    
+    .reading {
+      font-size: 0.9rem;
+    }
+    
+    button {
+      padding: 0.4rem 0.75rem;
+    }
+  }
 </style> 

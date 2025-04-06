@@ -106,31 +106,36 @@
     max-width: 1200px;
     width: 100%;
     margin: 0 auto;
-    padding: 2rem;
+    padding: 1.5rem 1rem;
+    box-sizing: border-box;
   }
 
   footer {
     background-color: #333;
     color: white;
     text-align: center;
-    padding: 1rem;
+    padding: 0.75rem;
     margin-top: auto;
   }
 
   @media (max-width: 768px) {
     nav {
       flex-direction: column;
-      padding: 1rem 0;
+      padding: 0.75rem 0;
     }
 
     .nav-links {
-      margin-top: 1rem;
+      margin-top: 0.75rem;
       flex-wrap: wrap;
       justify-content: center;
     }
 
     .nav-links li {
-      margin: 0.5rem;
+      margin: 0.4rem;
+    }
+    
+    main {
+      padding: 0.75rem 0.5rem;
     }
   }
 </style> 

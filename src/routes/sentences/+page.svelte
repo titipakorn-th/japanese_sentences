@@ -96,7 +96,7 @@
     <div class="sentence-list">
       {#each sentences as sentence (sentence.sentenceId)}
         <div class="sentence-card">
-          <div class="sentence-content">
+          <div class="card-content">
             <a href="/sentences/{sentence.sentenceId}" class="sentence-text">
               <Furigana 
                 text={sentence.sentence} 
@@ -134,7 +134,7 @@
             </div>
           </div>
           
-          <div class="actions">
+          <div class="card-actions">
             <a href="/sentences/{sentence.sentenceId}" class="btn-secondary">View</a>
             <a href="/sentences/{sentence.sentenceId}/edit" class="btn-secondary">Edit</a>
           </div>
@@ -261,9 +261,10 @@
     grid-template-columns: 1fr auto;
     grid-template-areas:
       "content meta"
-      "content actions";
+      "actions actions";
     gap: 1rem;
     transition: transform 0.2s, box-shadow 0.2s;
+    overflow: hidden;
   }
   
   .sentence-card:hover {
@@ -271,8 +272,43 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
   
-  .sentence-content {
+  .card-content {
     grid-area: content;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    overflow: hidden;
+  }
+  
+  .japanese-text {
+    font-size: 1.5rem;
+    line-height: 1.6;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    word-break: break-word;
+    margin: 0;
+  }
+  
+  .translation {
+    color: #6c757d;
+    font-size: 1.1rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    margin: 0;
+  }
+  
+  .card-actions {
+    grid-area: actions;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
   }
   
   .sentence-meta {
@@ -280,13 +316,7 @@
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 0.5rem;
-  }
-  
-  .actions {
-    grid-area: actions;
-    display: flex;
-    gap: 0.5rem;
+    gap: 0.4rem;
   }
   
   .sentence-text {
@@ -300,13 +330,6 @@
   
   .sentence-text:hover {
     color: #4a6fa5;
-  }
-  
-  .translation {
-    color: #6c757d;
-    font-size: 0.95rem;
-    margin-top: 0.5rem;
-    font-style: italic;
   }
   
   .difficulty {
@@ -404,15 +427,69 @@
         "content"
         "meta"
         "actions";
+      padding: 1rem;
+      gap: 0.75rem;
     }
     
     .sentence-meta {
       align-items: flex-start;
-      margin-top: 0.5rem;
+      margin-top: 0;
     }
     
     .tags {
       justify-content: flex-start;
+    }
+    
+    .japanese-text {
+      font-size: 1.3rem;
+      line-height: 1.5;
+    }
+    
+    .translation {
+      font-size: 1rem;
+    }
+    
+    .filter-container {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    .filter-field {
+      flex: 1;
+      margin-right: 0;
+      margin-bottom: 0.5rem;
+    }
+    
+    .card-actions {
+      margin-top: 0.25rem;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .sentence-card {
+      padding: 1rem;
+    }
+    
+    .japanese-text {
+      font-size: 1.2rem;
+      line-height: 1.5;
+    }
+    
+    .tag {
+      padding: 0.15rem 0.4rem;
+      font-size: 0.75rem;
+    }
+    
+    .sentences-container h1 {
+      font-size: 1.5rem;
+    }
+    
+    .pagination {
+      flex-wrap: wrap;
+    }
+    
+    .card-actions {
+      flex-wrap: wrap;
     }
   }
 </style> 

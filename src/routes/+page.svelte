@@ -15,10 +15,12 @@
     const level = difficultyLevel || 1;
     
     // Base size is inversely proportional to difficulty (easier sentences are larger)
-    const baseSize = 6 - level;
+    // Reduced base sizes overall
+    const baseSize = (6 - level) * 0.6;
     
     // Adjust size based on length (shorter sentences get slightly larger font)
-    const lengthFactor = Math.max(0.6, Math.min(1.2, 30 / length));
+    // More aggressive reduction for longer sentences
+    const lengthFactor = Math.max(0.5, Math.min(1.0, 20 / length));
     
     return baseSize * lengthFactor + 'rem';
   }
@@ -37,16 +39,78 @@
     return colors[level || 1] || colors[1];
   }
   
-  // Get random position for the cloud animation effect
+  // Get random position for the cloud animation effect with better distribution
   function getRandomPosition() {
-    const top = Math.floor(Math.random() * 70) + 10; // 10-80%
-    const left = Math.floor(Math.random() * 70) + 10; // 10-80%
+    // Grid-like positioning to avoid too much overlap
+    // Create a 5x5 grid (approximately) and position sentences in cells
+    const rows = 5;
+    const cols = 5;
+    
+    const row = Math.floor(Math.random() * rows);
+    const col = Math.floor(Math.random() * cols);
+    
+    // Add some randomness within each cell
+    const rowPos = (row * (100 / rows)) + (Math.random() * (100 / rows * 0.6));
+    const colPos = (col * (100 / cols)) + (Math.random() * (100 / cols * 0.6));
+    
+    // Constrain within visible area
+    const top = Math.min(Math.max(rowPos, 5), 90); // 5-90%
+    const left = Math.min(Math.max(colPos, 5), 90); // 5-90%
+    
     return `top: ${top}%; left: ${left}%;`;
   }
   
   // Get a unique delay for the animation
   function getAnimationDelay() {
     return `animation-delay: ${Math.random() * 10}s;`;
+  }
+  
+  // Truncate sentences for the cloud and adjust furigana data
+  function processSentenceForCloud(sentence: string, furiganaData: any, maxLength = 30): { text: string, furiganaData: any } {
+    if (!furiganaData || sentence.length <= maxLength) {
+      return { text: sentence, furiganaData };
+    }
+    
+    let truncatedText = sentence;
+    let endIndex = sentence.length;
+    
+    // Try to truncate at a punctuation mark
+    const punctuation = ['.', '。', '!', '！', '?', '？', '、', ',', '，'];
+    for (const mark of punctuation) {
+      const index = sentence.indexOf(mark, maxLength * 0.6);
+      if (index > 0 && index < maxLength) {
+        endIndex = index + 1;
+        truncatedText = sentence.substring(0, endIndex) + '...';
+        break;
+      }
+    }
+    
+    // If no punctuation found, truncate at word/character boundary
+    if (endIndex === sentence.length && sentence.length > maxLength) {
+      endIndex = maxLength;
+      truncatedText = sentence.substring(0, endIndex) + '...';
+    }
+    
+    // Parse furigana data if it's a string
+    let parsedFurigana = furiganaData;
+    if (typeof furiganaData === 'string') {
+      try {
+        parsedFurigana = JSON.parse(furiganaData);
+      } catch (e) {
+        console.error('Error parsing furigana data:', e);
+        parsedFurigana = [];
+      }
+    }
+    
+    // Filter furigana data to only include entries within the truncated text
+    const filteredFurigana = Array.isArray(parsedFurigana) 
+      ? parsedFurigana.filter(item => item.end <= endIndex)
+      : [];
+    
+    return { 
+      text: truncatedText, 
+      furiganaData: filteredFurigana 
+    };
   }
   
   // Add mounted state for animation purposes
@@ -81,14 +145,17 @@
             {getAnimationDelay()}
           "
           data-difficulty={sentence.difficultyLevel}
+          title={sentence.sentence}
         >
           {#if sentence.furiganaData}
+            {@const processed = processSentenceForCloud(sentence.sentence, sentence.furiganaData)}
             <Furigana 
-              text={sentence.sentence}
-              furiganaData={sentence.furiganaData}
+              text={processed.text}
+              furiganaData={processed.furiganaData}
             />
           {:else}
-            {sentence.sentence}
+            {@const processed = processSentenceForCloud(sentence.sentence, null)}
+            {processed.text}
           {/if}
         </a>
       {/each}
@@ -147,7 +214,7 @@
   
   .sentence-cloud {
     position: relative;
-    min-height: 60vh;
+    min-height: 80vh;
     margin-bottom: 2rem;
     border-radius: 12px;
     background-color: #f9f9f9;
@@ -160,25 +227,31 @@
     position: absolute;
     display: inline-block;
     text-decoration: none;
-    padding: 0.5rem;
-    border-radius: 6px;
+    padding: 0.8rem;
+    border-radius: 8px;
     transition: all 0.3s ease;
-    opacity: 0.9;
+    opacity: 0.85;
     z-index: 1;
-    max-width: 400px;
+    max-width: 500px;
     text-align: center;
-    animation: float 15s ease-in-out infinite;
-    white-space: nowrap;
+    animation: float 20s ease-in-out infinite;
+    white-space: normal;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-height: 200px;
+    line-height: 1.4;
+    background-color: rgba(255, 255, 255, 0.5);
   }
   
   .sentence-bubble:hover {
     z-index: 10;
-    transform: scale(1.1);
+    transform: scale(1.05);
     opacity: 1;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
     background-color: rgba(255, 255, 255, 0.95);
+    max-height: none;
+    overflow: visible;
+    white-space: normal;
   }
   
   .empty-state {
@@ -274,13 +347,13 @@
       transform: translate(0, 0);
     }
     25% {
-      transform: translate(-10px, 5px);
+      transform: translate(-5px, 3px);
     }
     50% {
-      transform: translate(5px, -5px);
+      transform: translate(3px, -3px);
     }
     75% {
-      transform: translate(-5px, -10px);
+      transform: translate(-3px, -5px);
     }
     100% {
       transform: translate(0, 0);

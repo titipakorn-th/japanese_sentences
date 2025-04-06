@@ -312,12 +312,18 @@
     {#if sentence?.tags}
       <div class="tags-section">
         <h2>Tags</h2>
-        <div class="tags">
-          {#each sentence.tags.split(',') as tag}
-            <button class="tag" onclick={() => filterByTag(tag)}>
-              {tag.trim()}
-            </button>
-          {/each}
+        <div class="tag-list">
+          {#if sentence && sentence.tags}
+            {#each sentence.tags.split(',') as tag}
+              {#if tag.trim()}
+                <button class="tag" onclick={() => filterByTag(tag.trim())}>
+                  {tag.trim()}
+                </button>
+              {/if}
+            {/each}
+          {:else}
+            <p class="no-tags">No tags</p>
+          {/if}
         </div>
       </div>
     {/if}
@@ -406,7 +412,7 @@
   .header-content {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.4rem;
   }
   
   h1 {
@@ -417,7 +423,7 @@
   .header-meta {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem;
   }
   
   .difficulty {
@@ -583,39 +589,39 @@
   .sentence-content {
     background-color: white;
     border-radius: 8px;
-    padding: 2rem;
+    padding: 1.5rem;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
   }
   
   .japanese-text {
     font-size: 1.8rem;
-    line-height: 1.8;
-    margin-bottom: 2rem;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
   }
   
   h2 {
     font-size: 1.2rem;
     color: #4a6fa5;
     margin-top: 0;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
     font-weight: 600;
   }
   
   .translation p {
     font-size: 1.2rem;
-    line-height: 1.6;
+    line-height: 1.5;
     margin: 0;
     color: #495057;
   }
   
   .tags-section {
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
     border-top: 1px solid #e9ecef;
   }
   
-  .tags {
+  .tag-list {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
@@ -639,38 +645,33 @@
   .vocabulary-section, .furigana-section {
     background-color: white;
     border-radius: 8px;
-    padding: 2rem;
+    padding: 1.5rem;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
   }
   
   .vocabulary-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 1.5rem;
+    gap: 1rem;
+    margin-top: 1rem;
   }
   
   .vocabulary-item {
     padding: 1rem;
-    border-radius: 6px;
+    border-radius: 4px;
     background-color: #f8f9fa;
     border-left: 3px solid #4a6fa5;
   }
   
-  .vocab-word {
-    font-size: 1.2rem;
-    font-weight: 600;
-    margin-bottom: 0.3rem;
+  .vocabulary-item h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+    color: #1a1a1a;
   }
   
-  .vocab-reading {
-    font-size: 0.95rem;
-    color: #6c757d;
-    margin-bottom: 0.5rem;
-  }
-  
-  .vocab-meaning {
-    font-size: 0.95rem;
+  .vocabulary-item p {
+    margin: 0;
     color: #495057;
   }
   
@@ -678,7 +679,10 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
+  }
+  
+  .furigana-editor {
+    margin-top: 1.5rem;
   }
   
   .actions-footer {
@@ -715,21 +719,73 @@
     
     .header-actions {
       width: 100%;
-      justify-content: space-between;
-    }
-    
-    .japanese-text {
-      font-size: 1.5rem;
+      justify-content: flex-start;
     }
     
     .vocabulary-list {
       grid-template-columns: 1fr;
     }
     
-    .section-header {
-      flex-direction: column;
-      gap: 0.75rem;
-      align-items: flex-start;
+    .japanese-text {
+      font-size: 1.5rem;
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+      word-break: break-word;
+    }
+    
+    .translation p {
+      font-size: 1.1rem;
+    }
+    
+    .sentence-content,
+    .vocabulary-section,
+    .furigana-section {
+      padding: 1.25rem;
+      border-radius: 6px;
+      word-break: break-word;
+    }
+    
+    .confirmation-dialog {
+      padding: 1.5rem;
+      width: 90%;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .japanese-text {
+      font-size: 1.3rem;
+    }
+    
+    .translation p {
+      font-size: 1rem;
+    }
+    
+    .vocabulary-item {
+      padding: 0.75rem;
+    }
+    
+    .vocabulary-item h3 {
+      font-size: 1rem;
+    }
+    
+    .sentence-content,
+    .vocabulary-section,
+    .furigana-section {
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .header-actions {
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    
+    h1 {
+      font-size: 1.5rem;
+    }
+    
+    h2 {
+      font-size: 1.1rem;
     }
   }
 </style> 
