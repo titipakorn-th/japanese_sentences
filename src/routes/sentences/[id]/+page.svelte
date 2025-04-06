@@ -28,18 +28,19 @@
   });
   
   const sentenceData = $derived(data.sentenceWithWords as SentenceWithWords);
-  let sentence = $state(sentenceData.sentence);
+  let sentence = $state<Sentence | null>(null);
   const words = $derived(sentenceData.words);
-  let furiganaItems = $state(parseFuriganaData(sentence.furiganaData));
+  let furiganaItems = $state<FuriganaItem[]>([]);
   
-  // Update sentence when sentenceData changes
+  // Update sentence and furiganaItems when sentenceData changes
   $effect(() => {
-    sentence = sentenceData.sentence;
-  });
-  
-  // Update furiganaItems when sentence changes
-  $effect(() => {
-    furiganaItems = parseFuriganaData(sentence.furiganaData);
+    if (sentenceData?.sentence) {
+      sentence = sentenceData.sentence;
+      
+      if (sentence?.furiganaData) {
+        furiganaItems = parseFuriganaData(sentence.furiganaData);
+      }
+    }
   });
   
   // Function to display a formatted date
@@ -64,13 +65,15 @@
   
   // Function to handle furigana updates
   function handleFuriganaUpdate(event: CustomEvent<{ updatedFurigana: FuriganaItem[] }>) {
-    furiganaItems = event.detail.updatedFurigana;
-    
-    // Update the sentence object as well to reflect the changes
-    sentence = {
-      ...sentence,
-      furiganaData: JSON.stringify(furiganaItems)
-    };
+    if (event.detail?.updatedFurigana && sentence) {
+      furiganaItems = event.detail.updatedFurigana;
+      
+      // Update the sentence object as well to reflect the changes
+      sentence = {
+        ...sentence,
+        furiganaData: JSON.stringify(furiganaItems)
+      };
+    }
   }
   
   // Function to handle deletion
@@ -127,7 +130,7 @@
   
   // Function to generate furigana
   async function generateFurigana() {
-    if (isGeneratingFurigana) return;
+    if (isGeneratingFurigana || !sentence) return;
     
     isGeneratingFurigana = true;
     generationError = '';
@@ -203,6 +206,7 @@
   }
 </script>
 
+{#if sentence}
 <div class="sentence-detail">
   <header class="page-header">
     <div class="header-content">
@@ -336,6 +340,7 @@
     </div>
   {/if}
 </div>
+{/if}
 
 <style>
   .sentence-detail {
