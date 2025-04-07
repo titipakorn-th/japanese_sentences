@@ -1,6 +1,7 @@
 import { getSentenceById, updateSentence } from '$lib/db/queries/sentences';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
+import { base } from '$app/paths';
 
 export const load: PageServerLoad = async ({ params, fetch }) => {
   console.log('Edit page load function called with params:', params);
@@ -121,8 +122,8 @@ export const actions: Actions = {
       });
     }
     
-    console.log(`Redirecting to /sentences/${sentenceId}`);
+    console.log(`Redirecting to ${base}/sentences/${sentenceId}`);
     // Redirect to the sentence view page
-    throw redirect(303, `/sentences/${sentenceId}`);
+    throw redirect(303, `${base}/sentences/${sentenceId}`);
   }
 }; 

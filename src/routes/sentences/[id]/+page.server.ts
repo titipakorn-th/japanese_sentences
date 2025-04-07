@@ -1,6 +1,7 @@
 import { getSentenceWithWords, deleteSentence, getSentenceById } from '$lib/db/queries/sentences';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
+import { base } from '$app/paths';
 
 export const load: PageServerLoad = async ({ params }) => {
   const sentenceId = parseInt(params.id);
@@ -56,7 +57,7 @@ export const actions: Actions = {
       // Use redirect status code properly
       return {
         status: 303,
-        location: '/sentences'
+        location: `${base}/sentences`
       };
     } catch (error) {
       console.error('Server: Error deleting sentence:', error);
@@ -68,7 +69,7 @@ export const actions: Actions = {
           console.log('Server: Sentence no longer exists after error, redirecting anyway');
           return {
             status: 303,
-            location: '/sentences'
+            location: `${base}/sentences`
           };
         }
       } catch (checkError) {

@@ -1,6 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { createSentence } from '$lib/db/queries/sentences';
 import type { Actions } from './$types';
+import { base } from '$app/paths';
 
 export const actions: Actions = {
   default: async ({ request }) => {
@@ -56,6 +57,6 @@ export const actions: Actions = {
     }
     
     // If we get here, the sentence was created successfully - redirect outside the try/catch
-    throw redirect(303, `/sentences/${newSentence.sentenceId}`);
+    throw redirect(303, `${base}/sentences/${newSentence.sentenceId}`);
   }
 }; 
