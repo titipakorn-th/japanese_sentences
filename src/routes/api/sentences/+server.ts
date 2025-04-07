@@ -1,49 +1,45 @@
 import { json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 import { createSentence } from '$lib/db/queries/sentences';
-import type { RequestHandler } from '@sveltejs/kit';
 
 export const POST: RequestHandler = async ({ request }) => {
   try {
-    const formData = await request.formData();
+    // Parse JSON request body
+    const data = await request.json();
     
-    const sentenceText = formData.get('sentence')?.toString() || '';
-    const translation = formData.get('translation')?.toString() || undefined;
-    const difficultyLevel = parseInt(formData.get('difficultyLevel')?.toString() || '1');
-    const tags = formData.get('tags')?.toString() || undefined;
+    // Extract required fields
+    const { sentence, translation, difficultyLevel, tags, source } = data;
     
     // Validate input
-    if (!sentenceText.trim()) {
-      console.error('Validation error: Sentence text is empty');
-      return json({ error: 'Sentence text is required' }, { status: 400 });
+    if (!sentence || typeof sentence !== 'string' || !sentence.trim()) {
+      return json({ 
+        success: false, 
+        error: 'Sentence text is required'
+      }, { status: 400 });
     }
-    
-    console.log('Creating sentence:', { sentenceText, translation, difficultyLevel, tags });
     
     // Create the sentence in the database
     const newSentence = await createSentence({
-      sentence: sentenceText,
+      sentence,
       translation,
-      difficultyLevel,
+      difficultyLevel: difficultyLevel || 1,
       tags,
-      source: 'user',
+      source: source || 'api'
     });
     
-    console.log('Sentence created successfully:', newSentence);
-    
-    // Ensure we have a sentence ID for the redirect
-    if (!newSentence || !newSentence.sentenceId) {
-      console.error('Error: Created sentence is missing ID', newSentence);
-      return json({ 
-        error: 'Failed to create sentence properly' 
-      }, { status: 500 });
-    }
-    
-    return json(newSentence, { status: 201 });
+    // Return success response
+    return json({
+      success: true,
+      sentenceId: newSentence.sentenceId,
+      sentence: newSentence
+    });
   } catch (error) {
-    console.error('Error creating sentence:', error);
-    return json({ 
-      error: 'Failed to create sentence',
-      details: error instanceof Error ? error.message : String(error) 
+    console.error('API Error creating sentence:', error);
+    
+    // Return error response
+    return json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error creating sentence'
     }, { status: 500 });
   }
 }; 

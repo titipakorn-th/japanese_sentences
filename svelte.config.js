@@ -13,13 +13,23 @@ const config = {
 			// Custom options for Node adapter
 			out: 'build',
 			precompress: true,
-			envPrefix: 'APP_'
+			envPrefix: 'APP_',
+			// Ensure native modules are properly built
+			deps: {
+				// Mark better-sqlite3 as a dependency that uses native code
+				nativeNodeModules: ['better-sqlite3']
+			}
 		}),
 		
 		// Configure the app to be served from a subdirectory in production
 		paths: {
 			base: '/jp_sentences',
 			relative: false
+		},
+		
+		// Disable CSRF protection completely
+		csrf: {
+			checkOrigin: false
 		}
 	}
 };

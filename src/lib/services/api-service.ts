@@ -158,4 +158,40 @@ export async function updateSentenceFurigana(sentenceId: number, furiganaData: a
     console.error('Error updating sentence furigana:', error);
     return false;
   }
+}
+
+/**
+ * Creates a new sentence via the API endpoint
+ */
+export async function createSentenceViaApi(data: {
+  sentence: string;
+  translation?: string;
+  difficultyLevel?: number;
+  tags?: string;
+}): Promise<any> {
+  try {
+    // Call the API endpoint
+    const response = await fetch(`${base}/api/sentences`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        ...data,
+        source: 'api-client'
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('API error creating sentence:', errorData);
+      throw new Error(errorData.error || `API error: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Failed to create sentence via API:', error);
+    throw error;
+  }
 } 

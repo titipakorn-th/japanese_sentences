@@ -57,12 +57,12 @@ if (!building) {
             sentence_id INTEGER PRIMARY KEY,
             sentence TEXT NOT NULL,
             translation TEXT,
-            notes TEXT,
             difficulty_level INTEGER DEFAULT 1,
             tags TEXT,
             furigana_data TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            llm_processed BOOLEAN DEFAULT FALSE
+            llm_processed BOOLEAN DEFAULT FALSE,
+            source TEXT
           )
         `);
         
@@ -71,30 +71,30 @@ if (!building) {
           {
             sentence: '私は日本語を勉強しています。',
             translation: 'I am studying Japanese.',
-            notes: 'Basic present progressive tense',
             difficulty: 1,
             tags: 'beginner,grammar,verb',
+            source: 'system'
           },
           {
             sentence: '明日は東京に行きます。',
             translation: 'I will go to Tokyo tomorrow.',
-            notes: 'Future tense with に particle',
             difficulty: 2,
             tags: 'intermediate,travel,verb',
+            source: 'system'
           },
           {
             sentence: '彼女は本を読んでいました。',
             translation: 'She was reading a book.',
-            notes: 'Past progressive tense',
             difficulty: 2,
             tags: 'intermediate,grammar,verb',
+            source: 'system'
           }
         ];
         
         // Insert sample data
         const stmt = db.prepare(`
           INSERT INTO sentences 
-          (sentence, translation, notes, difficulty_level, tags)
+          (sentence, translation, difficulty_level, tags, source)
           VALUES (?, ?, ?, ?, ?)
         `);
         
@@ -102,9 +102,9 @@ if (!building) {
           stmt.run(
             s.sentence,
             s.translation,
-            s.notes,
             s.difficulty,
-            s.tags
+            s.tags,
+            s.source
           );
         }
         

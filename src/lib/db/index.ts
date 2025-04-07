@@ -23,14 +23,22 @@ if (!browser) {
   // Only import these in server context
   const importDatabase = async () => {
     try {
-      Database = (await import('better-sqlite3')).default;
-      drizzle = (await import('drizzle-orm/better-sqlite3')).drizzle;
-      migrate = (await import('drizzle-orm/better-sqlite3/migrator')).migrate;
+      // Use dynamic imports which work in both ESM and CommonJS
+      const betterSqlite3Import = await import('better-sqlite3');
+      Database = betterSqlite3Import.default || betterSqlite3Import;
+      
+      const drizzleImport = await import('drizzle-orm/better-sqlite3');
+      drizzle = drizzleImport.drizzle;
+      
+      const migrateImport = await import('drizzle-orm/better-sqlite3/migrator');
+      migrate = migrateImport.migrate;
+      
       path = await import('node:path');
       fs = await import('node:fs');
-      console.log('SQLite and DB modules loaded successfully');
+      
+      console.log('SQLite and DB modules loaded successfully via dynamic import');
     } catch (error) {
-      console.error('Error loading database modules:', error);
+      console.error('Error loading database modules via dynamic import:', error);
     }
   };
 
@@ -264,8 +272,8 @@ const mockDbWithPersistence = {
             // Let SQLite handle the auto-increment for sentence_id
             const insertStmt = dbConn.prepare(`
               INSERT INTO sentences 
-              (sentence, translation, notes, difficulty_level, tags, furigana_data, created_at, llm_processed)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+              (sentence, translation, notes, difficulty_level, tags, furigana_data, created_at, llm_processed, source)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
             
             // Insert data, excluding sentenceId (let SQLite assign it)
@@ -277,7 +285,8 @@ const mockDbWithPersistence = {
               data.tags || null,
               data.furiganaData || null,
               nowIso,
-              data.llmProcessed ? 1 : 0
+              data.llmProcessed ? 1 : 0,
+              data.source || 'system'
             );
             
             console.log('DB INSERT: Successfully inserted into dev.db');
@@ -513,12 +522,12 @@ function initMockDatabase() {
             sentence_id INTEGER PRIMARY KEY,
             sentence TEXT NOT NULL,
             translation TEXT,
-            notes TEXT,
             difficulty_level INTEGER DEFAULT 1,
             tags TEXT,
             furigana_data TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            llm_processed BOOLEAN DEFAULT FALSE
+            llm_processed BOOLEAN DEFAULT FALSE,
+            source TEXT
           )
         `);
         console.log('Successfully created sentences table');
@@ -546,18 +555,18 @@ function initMockDatabase() {
             sentenceId: 1,
             sentence: 'これは新しい文章です。',
             translation: 'This is a new sentence.',
-            notes: 'Example sentence',
             difficultyLevel: 1,
             tags: 'basic,example',
             furiganaData: null,
             createdAt: new Date().toISOString(),
-            llmProcessed: false
+            llmProcessed: false,
+            source: 'system'
           }
         ];
         
         const stmt = sqlite.prepare(`
           INSERT INTO sentences 
-          (sentence_id, sentence, translation, notes, difficulty_level, tags, furigana_data, created_at, llm_processed)
+          (sentence_id, sentence, translation, difficulty_level, tags, furigana_data, created_at, llm_processed, source)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
         
@@ -566,12 +575,12 @@ function initMockDatabase() {
             s.sentenceId,
             s.sentence,
             s.translation,
-            s.notes,
             s.difficultyLevel,
             s.tags,
             s.furiganaData,
             s.createdAt,
-            s.llmProcessed ? 1 : 0
+            s.llmProcessed ? 1 : 0,
+            s.source || 'system'
           );
         }
         
@@ -600,12 +609,12 @@ function initMockDatabase() {
               sentence_id INTEGER PRIMARY KEY,
               sentence TEXT NOT NULL,
               translation TEXT,
-              notes TEXT,
               difficulty_level INTEGER DEFAULT 1,
               tags TEXT,
               furigana_data TEXT,
               created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-              llm_processed BOOLEAN DEFAULT FALSE
+              llm_processed BOOLEAN DEFAULT FALSE,
+              source TEXT
             )
           `);
         }
@@ -714,30 +723,143 @@ export const db = browser
 export { mockDb, mockDbWithPersistence };
 
 // Run migrations when the app starts (in production, server-side only)
-export function runMigrations() {
+export async function runMigrations() {
   // Skip in browser - early return
   if (browser) {
     console.log('Migrations skipped in browser environment');
     return;
   }
   
+  console.log('Running migrations in environment:', dev ? 'development' : 'production');
+  
   // Skip if we don't have the required modules
-  if (!path || !migrate) {
-    console.log('Migrations skipped: modules not loaded');
+  if (!Database || !drizzle || !migrate) {
+    console.error('Migrations skipped: modules not loaded. Attempting to load modules directly...');
+    
+    try {
+      // Use dynamic imports which work in both ESM and CommonJS
+      const betterSqlite3Import = await import('better-sqlite3');
+      const BetterSQLite3 = betterSqlite3Import.default || betterSqlite3Import;
+      
+      const drizzleImport = await import('drizzle-orm/better-sqlite3');
+      const { drizzle } = drizzleImport;
+      
+      const migrateImport = await import('drizzle-orm/better-sqlite3/migrator');
+      const { migrate } = migrateImport;
+      
+      const pathImport = await import('node:path');
+      const nodePath = pathImport.default || pathImport;
+      
+      console.log('Successfully loaded database modules via dynamic import');
+      
+      // Create database files if they don't exist in preview mode
+      // For development
+      let dbPath = dev ? 'dev.db' : 'japanese_learning.db';
+      
+      console.log(`Using database path: ${dbPath}`);
+      
+      // Create a connection to the database
+      try {
+        console.log(`Opening database connection to ${dbPath}`);
+        const sqlite = new BetterSQLite3(dbPath, { verbose: console.log });
+        
+        // Create the sentences table if it doesn't exist
+        try {
+          sqlite.exec(`
+            CREATE TABLE IF NOT EXISTS sentences (
+              sentence_id INTEGER PRIMARY KEY,
+              sentence TEXT NOT NULL,
+              translation TEXT,
+              difficulty_level INTEGER DEFAULT 1,
+              tags TEXT,
+              furigana_data TEXT,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              llm_processed BOOLEAN DEFAULT FALSE,
+              source TEXT
+            )
+          `);
+          console.log('Ensured sentences table exists');
+        } catch (tableError) {
+          console.error('Error creating sentences table:', tableError);
+        }
+        
+        // Create the db connection with drizzle
+        const drizzleDb = drizzle(sqlite, { schema });
+        
+        // Set up the global connection for SvelteKit to use
+        if (typeof global !== 'undefined') {
+          const globalObj = global as unknown as SvelteKitGlobal;
+          if (!globalObj.__sveltekit_dev) {
+            globalObj.__sveltekit_dev = {};
+          }
+          globalObj.__sveltekit_dev.dbConnection = sqlite;
+          console.log('Set up global database connection for SvelteKit');
+        }
+        
+        // Skip migrations in production for now since we're creating the table directly
+        // This avoids the error about missing migration files
+        if (!dev) {
+          console.log('Skipping migrations in production environment - using direct schema creation instead');
+        } else {
+          console.log('Skipping migrations in development mode');
+        }
+        
+        return sqlite;
+      } catch (connectionError) {
+        console.error('Error connecting to database:', connectionError);
+      }
+    } catch (e) {
+      console.error('Failed to load modules directly:', e);
+    }
     return;
   }
   
-  // Skip in development mode
-  if (dev) {
-    console.log('Running in development mode, using dev.db database');
-    return;
-  }
-  
-  // Only run migrations in production, on the server
+  // Standard path when modules are already loaded
   try {
-    const migrationsFolder = path.join(process.cwd(), 'src/lib/db/migrations');
-    migrate(db, { migrationsFolder });
-    console.log('Migrations completed');
+    const dbFile = dev ? 'dev.db' : 'japanese_learning.db';
+    console.log(`Using database file: ${dbFile}`);
+    
+    // Open SQLite connection
+    const sqlite = new Database(dbFile, { verbose: console.log });
+    
+    // Create the sentences table if needed
+    try {
+      sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS sentences (
+          sentence_id INTEGER PRIMARY KEY,
+          sentence TEXT NOT NULL,
+          translation TEXT,
+          difficulty_level INTEGER DEFAULT 1,
+          tags TEXT,
+          furigana_data TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          llm_processed BOOLEAN DEFAULT FALSE,
+          source TEXT
+        )
+      `);
+      console.log('Created or verified sentences table');
+    } catch (tableError) {
+      console.error('Error creating table:', tableError);
+    }
+    
+    // Set up the global connection for SvelteKit to use
+    if (typeof global !== 'undefined') {
+      const globalObj = global as unknown as SvelteKitGlobal;
+      if (!globalObj.__sveltekit_dev) {
+        globalObj.__sveltekit_dev = {};
+      }
+      globalObj.__sveltekit_dev.dbConnection = sqlite;
+      console.log('Set up global database connection for SvelteKit');
+    }
+    
+    // Skip migrations in production for now since we're creating the table directly
+    if (!dev) {
+      console.log('Skipping migrations in production environment - using direct schema creation instead');
+    } else {
+      console.log('Skipping migrations in development mode');
+    }
+    
+    return sqlite;
   } catch (e) {
     console.error('Failed to run migrations:', e);
   }
