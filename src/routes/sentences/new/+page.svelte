@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { goto } from '$app/navigation';
+  import { base } from '$app/paths';
   
   const { form } = $props<{ form: any }>();
   
@@ -132,7 +133,7 @@
     {/if}
     
     <div class="form-actions">
-      <a href="/sentences" class="btn-secondary">Cancel</a>
+      <a href="{base}/sentences" class="btn-secondary">Cancel</a>
       <button type="submit" class="btn-primary" disabled={!isValid || submitting}>
         {submitting ? 'Adding...' : 'Add Sentence'}
       </button>

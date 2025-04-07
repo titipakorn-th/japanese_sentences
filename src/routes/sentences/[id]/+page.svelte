@@ -7,6 +7,7 @@
   import { enhance } from '$app/forms';
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
+  import { base } from '$app/paths';
   import { updateSentenceFurigana } from '$lib/services/api-service';
   
   const { data, form } = $props<{ data: any; form: any }>();
@@ -29,7 +30,17 @@
   });
   
   const sentenceData = $derived(data.sentenceWithWords as SentenceWithWords);
-  let sentence = $state<Sentence | null>(null);
+  let sentence = $state<Sentence>({
+    sentenceId: 0,
+    sentence: '',
+    translation: '',
+    difficultyLevel: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    tags: '',
+    furiganaData: undefined,
+    notes: undefined
+  });
   const words = $derived(sentenceData?.words || []);
   let furiganaItems = $state<FuriganaItem[]>([]);
   
@@ -115,7 +126,7 @@
     
     try {
       // Send DELETE request to the API
-      const response = await fetch(`/sentences/${sentenceId}?/delete`, {
+      const response = await fetch(`${base}/sentences/${sentenceId}?/delete`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
@@ -135,16 +146,16 @@
       if (response.ok || response.status === 404) {
         // Deletion was successful or sentence doesn't exist anymore
         console.log('Deletion successful, redirecting to sentences list');
-        window.location.href = '/sentences';
+        window.location.href = `${base}/sentences`;
         return;
       }
       
       // If we get here, there was an issue but let's check if the sentence still exists
-      const checkResponse = await fetch(`/sentences/${sentenceId}`, { method: 'HEAD' });
+      const checkResponse = await fetch(`${base}/sentences/${sentenceId}`, { method: 'HEAD' });
       if (checkResponse.status === 404) {
         // Sentence doesn't exist, consider it a success
         console.log('Sentence appears to be deleted despite error, redirecting to list');
-        window.location.href = '/sentences';
+        window.location.href = `${base}/sentences`;
       } else {
         // Sentence still exists, show error
         console.error('Deletion failed:', result?.error || 'Unknown error');
@@ -154,7 +165,7 @@
       console.error('Error during deletion process:', error);
       // On error, we'll assume the deletion might have succeeded
       // and redirect to the list page
-      window.location.href = '/sentences';
+      window.location.href = `${base}/sentences`;
     }
   }
   
@@ -178,7 +189,7 @@
         console.log('No client-side API key available, using server-side key if configured');
       }
       
-      const response = await fetch(`/sentences/${sentence.sentenceId}/generate-furigana`, {
+      const response = await fetch(`${base}/sentences/${sentence.sentenceId}/generate-furigana`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -237,7 +248,7 @@
   
   // Add this function after toggleFuriganaEditor
   function filterByTag(tag: string) {
-    goto(`/sentences?tag=${encodeURIComponent(tag.trim())}`);
+    goto(`${base}/sentences?tag=${encodeURIComponent(tag.trim())}`);
   }
 </script>
 
@@ -246,20 +257,24 @@
   <header class="page-header">
     <div class="header-content">
       <h1>Sentence Details</h1>
-      <div class="header-meta">
-        {#if sentence.difficultyLevel}
-          <span class="difficulty level-{sentence.difficultyLevel}">
-            Level {sentence.difficultyLevel}
-          </span>
-        {/if}
-        <span class="date">Added: {formatDate(sentence.createdAt)}</span>
-      </div>
+      {#if sentence}
+        <div class="header-meta">
+          {#if sentence.difficultyLevel}
+            <span class="difficulty level-{sentence.difficultyLevel}">
+              Level {sentence.difficultyLevel}
+            </span>
+          {/if}
+          <span class="date">Added: {formatDate(sentence.createdAt)}</span>
+        </div>
+      {/if}
     </div>
     
     <div class="header-actions">
-      <a href="/sentences" class="btn-link">Back to Sentences</a>
-      <a href="/sentences/{sentence.sentenceId}/edit" class="btn-secondary">Edit</a>
-      <button onclick={toggleDeleteConfirmation} class="btn-danger">Delete</button>
+      <a href="{base}/sentences" class="btn-link">Back to Sentences</a>
+      {#if sentence}
+        <a href="{base}/sentences/{sentence.sentenceId}/edit" class="btn-secondary">Edit</a>
+        <button onclick={toggleDeleteConfirmation} class="btn-danger">Delete</button>
+      {/if}
     </div>
   </header>
   

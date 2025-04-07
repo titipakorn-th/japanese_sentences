@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores';
+  import { base } from '$app/paths';
   
   // Function to safely check if stack exists and get it
   function getErrorStack(error: unknown): string | null {
@@ -26,7 +27,7 @@
   {/if}
   
   <div class="actions">
-    <a href="/" class="button">Go to Home</a>
+    <a href="{base}/" class="button">Go to Home</a>
     <button class="button secondary" onclick={() => window.location.reload()}>
       Refresh Page
     </button>

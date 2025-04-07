@@ -4,6 +4,7 @@
   import { invalidate } from '$app/navigation';
   import { goto } from '$app/navigation';
   import Furigana from '$lib/components/Furigana.svelte';
+  import { base } from '$app/paths';
   
   const { data } = $props<{ data: any }>();
   
@@ -52,12 +53,12 @@
   
   // Function to filter by tag
   async function filterByTag(tag: string) {
-    goto(`/sentences?tag=${encodeURIComponent(tag.trim())}`);
+    goto(`${base}/sentences?tag=${encodeURIComponent(tag.trim())}`);
   }
   
   // Function to clear tag filter
   async function clearTagFilter() {
-    goto('/sentences');
+    goto(`${base}/sentences`);
   }
 </script>
 
@@ -68,7 +69,7 @@
       <button class="btn-secondary" onclick={refreshList}>
         Refresh List
       </button>
-      <a href="/sentences/new" class="btn-primary">Add New Sentence</a>
+      <a href="{base}/sentences/new" class="btn-primary">Add New Sentence</a>
     </div>
   </header>
   
@@ -89,7 +90,7 @@
         {/if}
       </p>
       {#if !activeTag}
-        <a href="/sentences/new" class="btn-primary">Add Your First Sentence</a>
+        <a href="{base}/sentences/new" class="btn-primary">Add Your First Sentence</a>
       {/if}
     </div>
   {:else}
@@ -97,7 +98,7 @@
       {#each sentences as sentence (sentence.sentenceId)}
         <div class="sentence-card">
           <div class="card-content">
-            <a href="/sentences/{sentence.sentenceId}" class="sentence-text">
+            <a href="{base}/sentences/{sentence.sentenceId}" class="sentence-text">
               <Furigana 
                 text={sentence.sentence} 
                 furiganaData={sentence.furiganaData || []} 
@@ -135,8 +136,8 @@
           </div>
           
           <div class="card-actions">
-            <a href="/sentences/{sentence.sentenceId}" class="btn-secondary">View</a>
-            <a href="/sentences/{sentence.sentenceId}/edit" class="btn-secondary">Edit</a>
+            <a href="{base}/sentences/{sentence.sentenceId}" class="btn-secondary">View</a>
+            <a href="{base}/sentences/{sentence.sentenceId}/edit" class="btn-secondary">Edit</a>
           </div>
         </div>
       {/each}
@@ -144,13 +145,13 @@
     
     <div class="pagination">
       {#if page > 1}
-        <a href="/sentences?page={page - 1}{activeTag ? `&tag=${encodeURIComponent(activeTag)}` : ''}" class="pagination-link">Previous</a>
+        <a href="{base}/sentences?page={page - 1}{activeTag ? `&tag=${encodeURIComponent(activeTag)}` : ''}" class="pagination-link">Previous</a>
       {/if}
       
       <span class="current-page">Page {page}</span>
       
       {#if sentences.length === limit}
-        <a href="/sentences?page={page + 1}{activeTag ? `&tag=${encodeURIComponent(activeTag)}` : ''}" class="pagination-link">Next</a>
+        <a href="{base}/sentences?page={page + 1}{activeTag ? `&tag=${encodeURIComponent(activeTag)}` : ''}" class="pagination-link">Next</a>
       {/if}
     </div>
   {/if}

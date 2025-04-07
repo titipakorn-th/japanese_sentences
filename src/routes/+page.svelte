@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import type { PageData } from './$types';
   import Furigana from '$lib/components/Furigana.svelte';
+  import { base } from '$app/paths';
   
   const { data } = $props<{ data: PageData }>();
   
@@ -136,7 +137,7 @@
     {#if sentences.length > 0}
       {#each sentences as sentence}
         <a 
-          href="/sentences/{sentence.sentenceId}" 
+          href="{base}/sentences/{sentence.sentenceId}" 
           class="sentence-bubble"
           style="
             font-size: {getFontSize(sentence.difficultyLevel, sentence.sentence.length)};
@@ -162,14 +163,14 @@
     {:else}
       <div class="empty-state">
         <p>No sentences found. Add some sentences to see them here!</p>
-        <a href="/sentences/new" class="button">Add Your First Sentence</a>
+        <a href="{base}/sentences/new" class="button">Add Your First Sentence</a>
       </div>
     {/if}
   </div>
   
   <div class="actions">
-    <a href="/sentences" class="button primary">View All Sentences</a>
-    <a href="/sentences/new" class="button secondary">Add New Sentence</a>
+    <a href="{base}/sentences" class="button primary">View All Sentences</a>
+    <a href="{base}/sentences/new" class="button secondary">Add New Sentence</a>
   </div>
   
   <div class="legend">

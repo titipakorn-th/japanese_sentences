@@ -1,4 +1,5 @@
 import type { FuriganaItem } from '$lib/db/types';
+import { base } from '$app/paths';
 
 interface GenerateFuriganaRequest {
   text: string;
@@ -27,7 +28,7 @@ export async function generateFuriganaViaApi(
   useMockLLM = false
 ): Promise<FuriganaItem[]> {
   try {
-    const response = await fetch('/api/furigana/generate', {
+    const response = await fetch(`${base}/api/furigana/generate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -71,7 +72,7 @@ export async function updateFuriganaViaApi(
     });
     
     // Call the correct API endpoint
-    const response = await fetch('/api/furigana/update', {
+    const response = await fetch(`${base}/api/furigana/update`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -105,7 +106,7 @@ export async function applyFuriganaToSentenceViaApi(
   text: string
 ): Promise<boolean> {
   try {
-    const response = await fetch(`/api/sentences/${sentenceId}/furigana`, {
+    const response = await fetch(`${base}/api/sentences/${sentenceId}/furigana`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -137,7 +138,7 @@ export async function updateSentenceFurigana(sentenceId: number, furiganaData: a
   try {
     console.log(`Updating furigana for sentence ID: ${sentenceId}`);
     
-    const response = await fetch(`/api/sentences/${sentenceId}/furigana`, {
+    const response = await fetch(`${base}/api/sentences/${sentenceId}/furigana`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

@@ -2,6 +2,7 @@
   import { browser } from '$app/environment';
   import { onMount } from 'svelte';
   import { enhance } from '$app/forms';
+  import { base } from '$app/paths';
   
   // Set up local storage keys
   const OPENAI_KEY_STORAGE = 'japanese_app_openai_api_key';
@@ -50,7 +51,7 @@
     testOpenAIResult = null;
     
     try {
-      const response = await fetch('/api/furigana/generate', {
+      const response = await fetch(`${base}/api/furigana/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -14,7 +14,13 @@ const config = {
 			out: 'build',
 			precompress: true,
 			envPrefix: 'APP_'
-		})
+		}),
+		
+		// Configure the app to be served from a subdirectory in production
+		paths: {
+			base: '/jp_sentences',
+			relative: false
+		}
 	}
 };
 

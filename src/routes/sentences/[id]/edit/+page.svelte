@@ -4,6 +4,7 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { goto } from '$app/navigation';
+  import { base } from '$app/paths';
   import type { PageData } from './$types';
   import type { Sentence } from '$lib/db/types';
   import { browser } from '$app/environment';
@@ -60,7 +61,7 @@
   
   // Submit handler for cancel button
   function handleCancel() {
-    goto(`/sentences/${sentence.sentenceId}`);
+    goto(`${base}/sentences/${sentence.sentenceId}`);
   }
   
   // Handle difficulty change from select element
@@ -86,11 +87,11 @@
     <h1>Edit Sentence</h1>
     <div class="actions">
       {#if sentence.sentenceId}
-        <a href="/sentences/{sentence.sentenceId}" class="button secondary">
+        <a href="{base}/sentences/{sentence.sentenceId}" class="button secondary">
           Cancel
         </a>
       {:else}
-        <a href="/sentences" class="button secondary">
+        <a href="{base}/sentences" class="button secondary">
           Back to Sentences
         </a>
       {/if}
@@ -109,7 +110,7 @@
     </div>
   {:else if !data?.sentence}
     <div class="error-message">
-      Failed to load sentence data. <a href="/sentences">Return to sentences list</a>
+      Failed to load sentence data. <a href="{base}/sentences">Return to sentences list</a>
     </div>
   {:else}
     <form
@@ -227,7 +228,7 @@
           </button>
         {/if}
         {#if sentence.sentenceId}
-          <a href="/sentences/{sentence.sentenceId}" class="button secondary">
+          <a href="{base}/sentences/{sentence.sentenceId}" class="button secondary">
             Cancel
           </a>
         {/if}

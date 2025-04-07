@@ -2,6 +2,7 @@
   // Import any necessary components or styles
   import { onMount } from 'svelte';
   import { runMigrations } from '$lib/db';
+  import { base } from '$app/paths';
 
   // Run database migrations during app initialization
   onMount(() => {
@@ -20,12 +21,12 @@
   <header>
     <nav>
       <div class="logo">
-        <a href="/">Japanese Learning Toolkit</a>
+        <a href="{base}/">Japanese Learning Toolkit</a>
       </div>
       <ul class="nav-links">
-        <li><a href="/">Home</a></li>
-        <li><a href="/sentences">Sentences</a></li>
-        <li><a href="/settings">Settings</a></li>
+        <li><a href="{base}/">Home</a></li>
+        <li><a href="{base}/sentences">Sentences</a></li>
+        <li><a href="{base}/settings">Settings</a></li>
       </ul>
     </nav>
   </header>
