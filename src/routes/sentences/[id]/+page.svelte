@@ -252,6 +252,14 @@
   }
 </script>
 
+<svelte:head>
+  <title>
+    {sentence?.sentence 
+      ? `Japanese Learning Toolkit - ${sentence.sentence.substring(0, 20)}${sentence.sentence.length > 20 ? '...' : ''}`
+      : 'Japanese Learning Toolkit - Sentence Details'}
+  </title>
+</svelte:head>
+
 {#if sentence}
 <div class="sentence-detail">
   <header class="page-header">

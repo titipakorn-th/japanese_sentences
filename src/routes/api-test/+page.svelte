@@ -100,7 +100,7 @@ createSentence({
 </script>
 
 <svelte:head>
-  <title>API Test - Japanese Learning</title>
+  <title>Japanese Learning Toolkit - API Test</title>
 </svelte:head>
 
 <div class="container">

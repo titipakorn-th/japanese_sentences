@@ -62,6 +62,10 @@
   }
 </script>
 
+<svelte:head>
+  <title>Japanese Learning Toolkit - All Sentences</title>
+</svelte:head>
+
 <div class="sentences-container">
   <header class="page-header">
     <h1>Japanese Sentences</h1>

@@ -14,6 +14,10 @@
   $: stackTrace = getErrorStack($page.error);
 </script>
 
+<svelte:head>
+  <title>Japanese Learning Toolkit - Error {$page.status}</title>
+</svelte:head>
+
 <div class="error-container">
   <h1>Error {$page.status}</h1>
   

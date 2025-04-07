@@ -57,7 +57,7 @@
 </script>
 
 <svelte:head>
-  <title>Furigana Generation Demo</title>
+  <title>Japanese Learning Toolkit - Furigana Generation Demo</title>
 </svelte:head>
 
 <div class="furigana-demo">

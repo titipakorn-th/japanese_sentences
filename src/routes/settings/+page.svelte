@@ -92,6 +92,10 @@
   }
 </script>
 
+<svelte:head>
+  <title>Japanese Learning Toolkit - Settings</title>
+</svelte:head>
+
 <div class="settings-page">
   <h1>Application Settings</h1>
   

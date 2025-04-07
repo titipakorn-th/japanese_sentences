@@ -40,6 +40,10 @@
   }
 </script>
 
+<svelte:head>
+  <title>Japanese Learning Toolkit - Add New Sentence</title>
+</svelte:head>
+
 <div class="new-sentence-container">
   <header>
     <h1>Add New Sentence</h1>

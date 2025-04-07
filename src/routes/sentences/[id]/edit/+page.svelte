@@ -79,7 +79,7 @@
 </script>
 
 <svelte:head>
-  <title>Edit Sentence | Japanese Learning</title>
+  <title>Japanese Learning Toolkit - Edit Sentence</title>
 </svelte:head>
 
 <div class="container">
