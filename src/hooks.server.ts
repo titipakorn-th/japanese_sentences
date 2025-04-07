@@ -4,8 +4,6 @@ import type { Handle } from '@sveltejs/kit';
 
 // Server-side only imports
 // These won't be bundled for the client 
-import fs from 'node:fs';
-import path from 'node:path';
 import Database from 'better-sqlite3';
 
 // Define custom platform interface with our dbConnection
@@ -38,6 +36,8 @@ if (!building) {
   try {
     // For development mode, ensure we have a persistent dev.db file
     if (dev) {
+      // Only import fs when needed in development mode
+      const fs = await import('node:fs');
       const devDbPath = 'dev.db';
       
       // Check if this is the first time (no db file exists)
