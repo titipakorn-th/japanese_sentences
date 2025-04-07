@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { FuriganaItem } from '$lib/db/types';
   import { parseFuriganaData } from '$lib/db/queries/sentences';
+  import { onMount } from 'svelte';
+  import { fade } from 'svelte/transition';
   
   export let text: string;
   export let furiganaData: string | FuriganaItem[] = [];
@@ -21,6 +23,40 @@
   }
   
   let parsedFuriganaData: FuriganaItem[] = [];
+  let copyFeedback = '';
+  let feedbackTimeout: ReturnType<typeof setTimeout> | null = null;
+  
+  // Function to copy text to clipboard
+  function copyToClipboard(text: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      console.log('Copied to clipboard:', text);
+      
+      // Show feedback message
+      copyFeedback = `"${text}" copied`;
+      
+      // Clear any existing timeout
+      if (feedbackTimeout) {
+        clearTimeout(feedbackTimeout);
+      }
+      
+      // Hide feedback after 2 seconds
+      feedbackTimeout = setTimeout(() => {
+        copyFeedback = '';
+      }, 2000);
+    })
+    .catch(err => {
+      console.error('Failed to copy text: ', err);
+    });
+  }
+  
+  // Clean up on unmount
+  onMount(() => {
+    return () => {
+      if (feedbackTimeout) {
+        clearTimeout(feedbackTimeout);
+      }
+    };
+  });
   
   // Check if a character is a kanji
   function isKanji(char: string): boolean {
@@ -39,7 +75,7 @@
   function renderFurigana(text: string, data: FuriganaItem[]): string {
     if (!data || data.length === 0) {
       console.log('No furigana data to render, returning plain text');
-      return text;
+      return text; // No furigana data, so return plain text without any clickable elements
     }
     
     console.log('Rendering furigana for text:', text, 'with data:', data);
@@ -85,7 +121,7 @@
       const before = result.slice(0, item.start);
       const after = result.slice(item.end);
       
-      // Get the smart furigana representation
+      // Get the smart furigana representation with the whole word clickable
       const processedText = applySmartFurigana(originalText, item.reading);
       
       // Replace the text
@@ -95,248 +131,32 @@
     return result;
   }
   
-  // Apply furigana only to kanji characters in a word
+  // Apply furigana to words and make the entire word clickable
   function applySmartFurigana(word: string, reading: string | undefined): string {
     if (!word || !reading) return word;
     
     // If there are no kanji in the word, return the original word
     if (!Array.from(word).some(isKanji)) return word;
     
-    // If the word is a single kanji, directly apply furigana
-    if (word.length === 1 && isKanji(word)) {
-      return `<ruby>${word}<rt>${reading}</rt></ruby>`;
-    }
-    
-    // Convert to character arrays
-    const chars = Array.from(word);
-    
-    // Special case for words with kanji separated by hiragana like "引っ越す"
-    // We need to match individual kanji with their correct readings
-    const kanjiPositions = chars.map((char, idx) => isKanji(char) ? idx : -1).filter(pos => pos !== -1);
-    
-    // If there are multiple kanji but they're not consecutive, we need special handling
-    if (kanjiPositions.length > 1 && 
-        (kanjiPositions[kanjiPositions.length-1] - kanjiPositions[0]) > kanjiPositions.length - 1) {
-      
-      // This is a case like "引っ越せる" where kanji are separated
-      
-      // For cases like "引っ越せる" -> "ひっこせる"
-      // We need to split the reading appropriately
-      if (word.includes('っ') && reading && reading.includes('っ')) {
-        // In a pattern like 引っ越す (hikkosu), we know:
-        // - 引 is likely "hi"
-        // - っ is the small tsu
-        // - 越 is likely "ko"
-        // - す is the verb ending
-        
-        const result = [];
-        const readingChars = Array.from(reading);
-        
-        // Find positions of 'っ' in both the word and reading
-        const tsuPositionInWord = word.indexOf('っ');
-        const tsuPositionInReading = reading.indexOf('っ');
-        
-        // For a pattern like "引っ越す" (hikkosu):
-        // - First kanji (引) gets reading up to っ ("hi")
-        // - Second kanji (越) gets reading after っ up to any hiragana endings
-        
-        if (tsuPositionInWord > 0 && tsuPositionInReading > 0) {
-          // Process each character
-          for (let i = 0; i < chars.length; i++) {
-            const char = chars[i];
-            
-            if (isKanji(char)) {
-              // This is a kanji - determine its reading based on position
-              
-              // First kanji (before っ)
-              if (i < tsuPositionInWord) {
-                const firstKanjiReading = reading.substring(0, tsuPositionInReading);
-                result.push(`<ruby>${char}<rt>${firstKanjiReading}</rt></ruby>`);
-              } 
-              // Second kanji (after っ)
-              else {
-                // Extract appropriate reading portion
-                // Find the hiragana suffix in the word after this kanji
-                const kanjiEndPosition = i + 1;
-                const hiraganaEnding = chars.slice(kanjiEndPosition).join('');
-                
-                // If hiragana ending exists and is in the reading
-                if (hiraganaEnding && reading.endsWith(hiraganaEnding)) {
-                  // Extract everything from after っ to before the hiragana ending
-                  const endingStartInReading = reading.length - hiraganaEnding.length;
-                  const secondKanjiReading = reading.substring(
-                    tsuPositionInReading + 1, 
-                    endingStartInReading
-                  );
-                  result.push(`<ruby>${char}<rt>${secondKanjiReading}</rt></ruby>`);
-                } else {
-                  // No matching hiragana suffix - use everything after っ
-                  const secondKanjiReading = reading.substring(tsuPositionInReading + 1);
-                  result.push(`<ruby>${char}<rt>${secondKanjiReading}</rt></ruby>`);
-                }
-              }
-            } else {
-              // For hiragana, just add the character as is
-              result.push(char);
-            }
-          }
-          
-          return result.join('');
-        }
-        
-        // Fallback for more complex patterns - previous implementation
-        const result2 = [];
-        let readingIdx = 0;
-        let readingChars2 = Array.from(reading);
-        
-        // Process each character in the original word
-        for (let i = 0; i < chars.length; i++) {
-          const char = chars[i];
-          
-          if (isKanji(char)) {
-            // This is a kanji - we need to determine its reading
-            
-            // Special logic for first kanji
-            if (i === kanjiPositions[0]) {
-              // For the first kanji, use characters up to the っ
-              const tsuPosition = reading.indexOf('っ');
-              if (tsuPosition > 0) {
-                const firstKanjiReading = reading.substring(0, tsuPosition);
-                result2.push(`<ruby>${char}<rt>${firstKanjiReading}</rt></ruby>`);
-                readingIdx = tsuPosition;
-                continue;
-              }
-            }
-            
-            // For other kanji, try to estimate based on position
-            // This is a simplified approach that won't work for all cases
-            
-            // Find how many non-kanji characters until the next kanji
-            let nextKanjiPosition = -1;
-            for (let j = i + 1; j < chars.length; j++) {
-              if (isKanji(chars[j])) {
-                nextKanjiPosition = j;
-                break;
-              }
-            }
-            
-            let kanjiReading;
-            if (nextKanjiPosition === -1) {
-              // This is the last kanji - use the rest of the reading minus any
-              // hiragana endings that match the word endings
-              
-              const remainingOriginal = chars.slice(i + 1).join('');
-              const remainingReading = readingChars2.slice(readingIdx + 1).join('');
-              
-              if (remainingOriginal.length > 0 && 
-                  remainingReading.endsWith(remainingOriginal)) {
-                // The remaining hiragana in the word matches the end of the reading
-                const hiraganaLength = remainingOriginal.length;
-                kanjiReading = remainingReading.slice(0, -hiraganaLength);
-              } else {
-                // Just use the next character of the reading as a fallback
-                kanjiReading = readingChars2[readingIdx + 1] || '';
-                readingIdx += 1;
-              }
-            } else {
-              // There's another kanji later - use one character of reading for now
-              // This is a very simplified approach
-              kanjiReading = readingChars2[readingIdx + 1] || '';
-              readingIdx += 1;
-            }
-            
-            result2.push(`<ruby>${char}<rt>${kanjiReading}</rt></ruby>`);
-          } else {
-            // For hiragana, just add the character
-            result2.push(char);
-            
-            // Skip past this character in the reading if it matches
-            if (readingIdx < readingChars2.length && char === readingChars2[readingIdx]) {
-              readingIdx++;
-            }
-          }
-        }
-        
-        return result2.join('');
-      }
-    }
-    
-    // For words with mixed kanji and hiragana:
-    // 1. For simple cases like "新しい" (atarashii), we extract the kanji part
-    const onlyKanji = chars.filter(isKanji);
-    
-    // If there's only one kanji, we can identify its reading more easily
-    if (onlyKanji.length === 1) {
-      const kanjiChar = onlyKanji[0];
-      const kanjiIndex = word.indexOf(kanjiChar);
-      
-      // Apply furigana only to the kanji character
-      // For 新しい with reading あたらしい, we only apply あたら to 新
-      const hiragana = Array.from(reading);
-      
-      // Try to guess the reading for the single kanji
-      let kanjiReading = "";
-      
-      // Simple approach: find the position where hiragana in the word matches 
-      // the hiragana in the reading, then use the prefix as kanji reading
-      const hiraInWord = chars.filter(isHiragana).join('');
-      
-      // Look for the hiragana part in the full reading
-      const hiraIndex = reading.indexOf(hiraInWord);
-      
-      if (hiraIndex > 0) {
-        // If hiragana is found in the reading after some characters,
-        // those first characters are likely the kanji reading
-        kanjiReading = reading.substring(0, hiraIndex);
-      } else {
-        // Fallback: use the full reading
-        kanjiReading = reading;
-      }
-      
-      // Replace the kanji with ruby annotation
-      const result = [...chars];
-      result[kanjiIndex] = `<ruby>${kanjiChar}<rt>${kanjiReading}</rt></ruby>`;
-      return result.join('');
-    } 
-    
-    // For compound words with multiple kanji like "今月", "自分":
-    // Group consecutive kanji together and apply the reading to the group
-    
-    // First, identify sequences of consecutive kanji
-    const result = [];
-    let currentKanjiGroup = [];
-    let currentKanjiStartIndex = -1;
-    
-    for (let i = 0; i < chars.length; i++) {
-      const char = chars[i];
-      if (isKanji(char)) {
-        if (currentKanjiGroup.length === 0) {
-          // Start of a new kanji group
-          currentKanjiStartIndex = i;
-        }
-        currentKanjiGroup.push(char);
-      } else {
-        // Not a kanji - if we were collecting a kanji group, finish it
-        if (currentKanjiGroup.length > 0) {
-          // We have a kanji group to process
-          const kanjiGroup = currentKanjiGroup.join('');
-          // For compound kanji, apply the reading to the entire group
-          result.push(`<ruby>${kanjiGroup}<rt>${reading}</rt></ruby>`);
-          currentKanjiGroup = [];
-        }
-        // Add the non-kanji character as is
-        result.push(char);
-      }
-    }
-    
-    // Handle any remaining kanji group at the end
-    if (currentKanjiGroup.length > 0) {
-      const kanjiGroup = currentKanjiGroup.join('');
-      result.push(`<ruby>${kanjiGroup}<rt>${reading}</rt></ruby>`);
-    }
-    
-    return result.join('');
+    // Make the entire word clickable by wrapping it in a span
+    // For any word with kanji, apply the reading to the entire word
+    return `<ruby><span class="kanji-clickable" onclick="document.dispatchEvent(new CustomEvent('copyKanji', {detail: '${word}'}))">
+      ${word}</span><rt>${reading}</rt></ruby>`;
   }
+  
+  // Set up event listener for kanji copy events
+  onMount(() => {
+    const handleCopyKanji = (event: CustomEvent<string>) => {
+      const kanji = event.detail;
+      copyToClipboard(kanji);
+    };
+    
+    document.addEventListener('copyKanji', handleCopyKanji as EventListener);
+    
+    return () => {
+      document.removeEventListener('copyKanji', handleCopyKanji as EventListener);
+    };
+  });
 </script>
 
 {#if parsedFuriganaData.length > 0}
@@ -344,7 +164,15 @@
     {@html renderFurigana(text, parsedFuriganaData)}
   </span>
 {:else}
-  <span class="plain-text">{text}</span>
+  <span class="plain-text">
+    {text}
+  </span>
+{/if}
+
+{#if copyFeedback}
+  <div class="copy-feedback" transition:fade={{ duration: 200 }}>
+    {copyFeedback}
+  </div>
 {/if}
 
 <style>
@@ -362,5 +190,31 @@
     font-size: 0.5em;
     color: #6c757d;
     line-height: 1;
+  }
+  
+  :global(.kanji-clickable) {
+    cursor: pointer;
+    color: #4a6fa5;
+    transition: background-color 0.2s, color 0.2s;
+    border-radius: 2px;
+    display: inline-block;
+  }
+  
+  :global(.kanji-clickable:hover) {
+    background-color: #e7f2ff;
+    color: #1a4a8e;
+  }
+  
+  .copy-feedback {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    z-index: 1000;
+    pointer-events: none;
   }
 </style> 
